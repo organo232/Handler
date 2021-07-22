@@ -1,9 +1,10 @@
 global class JitHandler implements Auth.SamlJitHandler {
     
     global User createUser(Id samlSsoProviderId, Id communityId, Id portalId,
-        String federationIdentifier, Map < String, String > attributes, String assertion) {
+                           String federationIdentifier, Map < String, String > attributes, String assertion) {
             
             String country = attributes['country'];
+
             String displayName = attributes['displayName'];
             List<String> displayNameParts = displayName.split(', ');
 
@@ -22,7 +23,7 @@ global class JitHandler implements Auth.SamlJitHandler {
             u.JobCode__c = attributes['jobcode'];
             u.Country = country;
             u.Alias = 'Test';
-            u.CurrencyIsoCode = cam.CurrencyIsoCode__c
+            u.CurrencyIsoCode = cam.CurrencyIsoCode__c;
             u.TimeZoneSidKey = cam.TimeZoneSidKey__c;
             u.EmailEncodingKey = cam.EmailEncodingKey__c;
             u.LocaleSidKey = cam.LocaleSidKey__c;
@@ -33,32 +34,41 @@ global class JitHandler implements Auth.SamlJitHandler {
             u.profileId = p.Id;
             u.IsActive = true;
             
-            
             insert u;
+
             assignPermissionSetGroup(attributes['jobcode'], u);
+
             return u;
         }
 
     @future
-    public static void assignPermissionSetGroup (String jobCode, User user){
-        JitPermissionMapping__mdt psgMapping = [
-                                            SELECT Id, PermissionSetGroup__c
+    public static void assignPermissionSetGroup (String jobCode, User u){
+        
+        JitPermissionMapping__mdt psgMapping = [SELECT Id, PermissionSetGroup__c
                                             FROM JitPermissionMapping__mdt 
                                             WHERE JobCode__c =:jobCode];
-        //query Id field from permission set group, filter query with access.permission_set_group__c
-        PermissionSetGroup  psg = [
-                                            SELECT Id,
-                                            FROM PermissionSetGroup
-                                            WHERE JobCode__c =:jobCode];
+        
+        PermissionSetGroup  psg = [SELECT Id
+                                   FROM PermissionSetGroup
+                                   WHERE DeveloperName =:psgMapping.PermissionSetGroup__c];
+
+
           //Assign permission set group to user  
-          PermissionSetAssignment psa = new PermissionSetAssignment
-          (PermissionSetId = access.IdPermissionSetId, AssigneeId = myAssigneeId);
-          insert psa;                                 
+          PermissionSetAssignment psa = new PermissionSetAssignment(
+              PermissionSetId = psg.Id,
+              AssigneeId = u.Id
+          );
+
+          insert psa;
     }
 
 
     global void updateUser(Id userId, Id samlSsoProviderId, Id communityId, Id portalId,
                           String federationIdentifier, Map < String, String > attributes, String assertion){
-                              User u = [SELECT Id, ContactId, IsActive FROM User WHERE Id=:userId];
-                                  }
+    
+        User u = [SELECT Id, ContactId, IsActive FROM User WHERE Id=:userId];
+
+        
+    
+    }
 }
