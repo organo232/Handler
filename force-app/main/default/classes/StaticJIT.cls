@@ -30,3 +30,4 @@ global class TestJitHandler implements Auth.SamlJitHandler {
                               User u = [SELECT Id, ContactId, IsActive FROM User WHERE Id=:userId];
                                   }
 }
+
