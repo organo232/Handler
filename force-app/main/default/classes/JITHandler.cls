@@ -75,7 +75,7 @@ global class JITHandler implements Auth.SamlJitHandler  {
                                   assignPermissionSetGroup(attributes.get('jobcode'), u.Id);
                               }
         
-        //test me that good test234
+       
         User u = [SELECT Id, JobCode__c FROM User WHERE Id=:userId];
         
         assignPermissionSetGroup(attributes.get('jobcode'), u.Id);
@@ -101,4 +101,4 @@ global class JITHandler implements Auth.SamlJitHandler  {
           delete psa;
     }
 }
-//For review.
+//For review
