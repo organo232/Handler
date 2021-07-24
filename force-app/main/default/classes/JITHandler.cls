@@ -45,11 +45,12 @@ global class JITHandler implements Auth.SamlJitHandler  {
         JITPermissionMapping__mdt psgMapping = [SELECT Id, PermissionSetGroup__c
                                             FROM JITPermissionMapping__mdt 
                                             WHERE JobCode__c =:jobCode];
-        
+        if (psgMapping == null) return;
+
         PermissionSetGroup  psg = [SELECT Id
                                    FROM PermissionSetGroup
                                    WHERE DeveloperName =:psgMapping.PermissionSetGroup__c];
-
+        if (psg == null) return;
 
           //Assign permission set group to user  
           PermissionSetAssignment psa = new PermissionSetAssignment(
@@ -63,9 +64,40 @@ global class JITHandler implements Auth.SamlJitHandler  {
 
     global void updateUser(Id userId, Id samlSsoProviderId, Id communityId, Id portalId,
                           String federationIdentifier, Map < String, String > attributes, String assertion){
+    
+        User u = [SELECT Id, JobCode__c FROM User WHERE Id=:userId];
+                          
+                              if (u.JobCode__c != attributes.get('jobcode')) {
+                                  //Call method to remove existing permission
+                                  removePermissionSetGroup(u.JobCode__c, userId);
+                                  
+                                  //Assign new permission
+                                  assignPermissionSetGroup(attributes.get('jobcode'), u.Id);
+                              }
+        
+        //test me that
         User u = [SELECT Id, JobCode__c FROM User WHERE Id=:userId];
         
         assignPermissionSetGroup(attributes.get('jobcode'), u.Id);
     
+    }
+    @future
+    public static void removePermissionSetGroup (String jobCode, String userId){
+        
+        JITPermissionMapping__mdt psgMapping = [SELECT Id, PermissionSetGroup__c
+                                            FROM JITPermissionMapping__mdt 
+                                            WHERE JobCode__c =: jobCode];
+        
+        PermissionSetGroup  psg = [SELECT Id
+                                   FROM PermissionSetGroup
+                                   WHERE DeveloperName =:psgMapping.PermissionSetGroup__c];
+
+		PermissionSetAssignment psa = [SELECT Id
+                                            FROM PermissionSetAssignment 
+                                            WHERE PermissionSetId =: psg.Id
+                                      		AND AssigneeId =: userId];
+          //Delete permission set group from user  
+          
+          delete psa;
     }
 }
