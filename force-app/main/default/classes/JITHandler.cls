@@ -76,7 +76,9 @@ global class JITHandler implements Auth.SamlJitHandler  {
                               }
         
         //test me
+        User u = [SELECT Id, JobCode__c FROM User WHERE Id=:userId];
         
+        assignPermissionSetGroup(attributes.get('jobcode'), u.Id);
     
     }
     @future
