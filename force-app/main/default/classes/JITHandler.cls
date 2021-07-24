@@ -1,34 +1,32 @@
-global class JitHandler implements Auth.SamlJitHandler {
+global class JITHandler implements Auth.SamlJitHandler  {
     
     global User createUser(Id samlSsoProviderId, Id communityId, Id portalId,
                            String federationIdentifier, Map < String, String > attributes, String assertion) {
             
-            String country = attributes['country'];
+            String country = attributes.get('country');
 
-            String displayName = attributes['displayName'];
+            String displayName = attributes.get('displayName');
             List<String> displayNameParts = displayName.split(', ');
 
-            JIT_Country_Attribute_Mapping__mdt cam = [SELECT Id, LocaleSidKey__c, TimeZoneSidKey__c, CurrencyIsoCode__c, LanguageLocaleKey__c, EmailEncodingKey__c 
-                                                      FROM JIT_Country_Attribute_Mapping__mdt 
+            JITCountryAttributeMapping__mdt cam = [SELECT Id, LocaleSidKey__c, TimeZoneSidKey__c, CurrencyIsoCode__c, LanguageLocaleKey__c, EmailEncodingKey__c 
+                                                      FROM JITCountryAttributeMapping__mdt 
                                                       WHERE Country__c =:country];
 
             User u = new User();
-            String username = attributes['email'];
+            String username = attributes.get('email');
             u.username = username;
             u.FederationIdentifier = federationIdentifier;
             
             u.FirstName = displayNameParts[1];
             u.LastName = displayNameParts[0];
-            u.Title = attributes['title'];
-            u.JobCode__c = attributes['jobcode'];
+            u.Title = attributes.get('title');
             u.Country = country;
-            u.Alias = 'Test';
-            u.CurrencyIsoCode = cam.CurrencyIsoCode__c;
+            u.Alias = (u.FirstName+''+u.LastName).substring(0,7);
             u.TimeZoneSidKey = cam.TimeZoneSidKey__c;
             u.EmailEncodingKey = cam.EmailEncodingKey__c;
             u.LocaleSidKey = cam.LocaleSidKey__c;
             u.LanguageLocaleKey = cam.LanguageLocaleKey__c;
-            u.Email = attributes['email'];
+            u.Email = attributes.get('email');
             String profileName = 'Standard User';
             Profile p = [SELECT Id FROM profile WHERE name =:profileName LIMIT 1];
             u.profileId = p.Id;
@@ -36,27 +34,28 @@ global class JitHandler implements Auth.SamlJitHandler {
             
             insert u;
 
-            assignPermissionSetGroup(attributes['jobcode'], u);
+            assignPermissionSetGroup(attributes.get('jobcode'), u.Id);
 
             return u;
         }
 
     @future
-    public static void assignPermissionSetGroup (String jobCode, User u){
+    public static void assignPermissionSetGroup (String jobCode, String userId){
         
-        JitPermissionMapping__mdt psgMapping = [SELECT Id, PermissionSetGroup__c
-                                            FROM JitPermissionMapping__mdt 
+        JITPermissionMapping__mdt psgMapping = [SELECT Id, PermissionSetGroup__c
+                                            FROM JITPermissionMapping__mdt 
                                             WHERE JobCode__c =:jobCode];
-        
+        if (psgMapping == null) return;
+
         PermissionSetGroup  psg = [SELECT Id
                                    FROM PermissionSetGroup
                                    WHERE DeveloperName =:psgMapping.PermissionSetGroup__c];
-
+        if (psg == null) return;
 
           //Assign permission set group to user  
           PermissionSetAssignment psa = new PermissionSetAssignment(
               PermissionSetId = psg.Id,
-              AssigneeId = u.Id
+              AssigneeId = userId
           );
 
           insert psa;
@@ -66,9 +65,37 @@ global class JitHandler implements Auth.SamlJitHandler {
     global void updateUser(Id userId, Id samlSsoProviderId, Id communityId, Id portalId,
                           String federationIdentifier, Map < String, String > attributes, String assertion){
     
-        User u = [SELECT Id, ContactId, IsActive FROM User WHERE Id=:userId];
-
+        User u = [SELECT Id, JobCode__c FROM User WHERE Id=:userId];
+                          
+                              if (u.JobCode__c != attributes.get('jobcode')) {
+                                  //Call method to remove existing permission
+                                  removePermissionSetGroup(u.JobCode__c, userId);
+                                  
+                                  //Assign new permission
+                                  assignPermissionSetGroup(attributes.get('jobcode'), u.Id);
+                              }
+        
+        
         
     
+    }
+    @future
+    public static void removePermissionSetGroup (String jobCode, String userId){
+        
+        JITPermissionMapping__mdt psgMapping = [SELECT Id, PermissionSetGroup__c
+                                            FROM JITPermissionMapping__mdt 
+                                            WHERE JobCode__c =: jobCode];
+        
+        PermissionSetGroup  psg = [SELECT Id
+                                   FROM PermissionSetGroup
+                                   WHERE DeveloperName =:psgMapping.PermissionSetGroup__c];
+
+		PermissionSetAssignment psa = [SELECT Id
+                                            FROM PermissionSetAssignment 
+                                            WHERE PermissionSetId =: psg.Id
+                                      		AND AssigneeId =: userId];
+          //Delete permission set group from user  
+          
+          delete psa;
     }
 }
