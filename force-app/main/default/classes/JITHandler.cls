@@ -75,7 +75,7 @@ global class JITHandler implements Auth.SamlJitHandler  {
                                   assignPermissionSetGroup(attributes.get('jobcode'), u.Id);
                               }
         
-        
+        //test
         
     
     }
