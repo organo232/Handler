@@ -117,4 +117,4 @@ global void updateUser(Id userId, Id samlSsoProviderId, Id communityId, Id porta
     handleJit(false, u, samlSsoProviderId, communityId, portalId, federationIdentifier, attributes, assertion);
 }
 }
-//
+//llup2.0
